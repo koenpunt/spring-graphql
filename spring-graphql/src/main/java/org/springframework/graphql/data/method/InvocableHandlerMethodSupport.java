@@ -27,6 +27,8 @@ import java.util.stream.Stream;
 
 import graphql.GraphQLContext;
 import io.micrometer.context.ContextSnapshot;
+import kotlin.coroutines.CoroutineContext;
+import kotlinx.coroutines.ExecutorsKt;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.CoroutinesUtils;
@@ -82,7 +84,11 @@ public abstract class InvocableHandlerMethodSupport extends HandlerMethod {
 		Method method = getBridgedMethod();
 		try {
 			if (KotlinDetector.isSuspendingFunction(method)) {
-				return CoroutinesUtils.invokeSuspendingFunction(method, getBean(), argValues);
+				if (this.executor != null) {
+					return CoroutinesUtils.invokeSuspendingFunction((CoroutineContext) ExecutorsKt.from(this.executor), method, getBean(), argValues);
+				} else {
+					return CoroutinesUtils.invokeSuspendingFunction(method, getBean(), argValues);
+				}
 			}
 			Object result = method.invoke(getBean(), argValues);
 			return handleReturnValue(graphQLContext, result);
